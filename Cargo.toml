@@ -5,5 +5,17 @@ edition = "2024"
 license = "MIT"
 authors = ["Saoirse Josetta <saoirse@fawn.rest>"]
 description = "define a syscall ABI once and generate both halves of it from the same source"
+repository = "https://github.com/s0uthview/sysabi.git"
+readme = "README.md"
+
+[workspace]
+members = ["macros"]
+
+[features]
+default = []
+# emit kernel half: handler trait and `kernel::dispatch`
+kernel = ["sysabi-macros/kernel"]
+user = ["sysabi-macros/user"]
 
 [dependencies]
+sysabi-macros = { path = "macros", version = "=0.1.0" }

@@ -1,0 +1,19 @@
+[package]
+name = "sysabi-macros"
+version = "0.1.0"
+edition = "2024"
+license = "MIT"
+authors = ["Saoirse Josetta <saoirse@fawn.rest>"]
+description = "proc-macro for sysabi"
+
+[lib]
+proc-macro = true
+
+[features]
+kernel = []
+user = []
+
+[dependencies]
+proc-macro2 = "1"
+quote = "1"
+syn = { version = "2", features = ["full"] }
