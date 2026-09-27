@@ -2,5 +2,8 @@
 name = "sysabi"
 version = "0.1.0"
 edition = "2024"
+license = "MIT"
+authors = ["Saoirse Josetta <saoirse@fawn.rest>"]
+description = "define a syscall ABI once and generate both halves of it from the same source"
 
 [dependencies]
