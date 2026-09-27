@@ -206,7 +206,10 @@ pub fn encode<E: ErrorCode>(ret: Result<usize, E>) -> usize {
         Err(e) => {
             let code = e.to_code();
 
-            debug_assert!((1..=MAX_ERRNO).contains(&code), "error code {code} out of range");
+            debug_assert!(
+                (1..=MAX_ERRNO).contains(&code),
+                "error code {code} out of range"
+            );
 
             (code as usize).wrapping_neg()
         }

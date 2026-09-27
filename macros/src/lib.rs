@@ -49,11 +49,17 @@ fn expand(attr: TokenStream2, item: ItemTrait) -> syn::Result<TokenStream2> {
     let abi = parse_abi_args(attr)?;
 
     if !item.generics.params.is_empty() || item.generics.where_clause.is_some() {
-        return Err(Error::new(item.generics.span(), "generics are not allowed on ABI traits"));
+        return Err(Error::new(
+            item.generics.span(),
+            "generics are not allowed on ABI traits",
+        ));
     }
 
     if !item.supertraits.is_empty() {
-        return Err(Error::new(item.supertraits.span(), "supertraits are not allowed on ABI traits"));
+        return Err(Error::new(
+            item.supertraits.span(),
+            "supertraits are not allowed on ABI traits",
+        ));
     }
 
     let mut errors: Option<Error> = None;
@@ -147,7 +153,10 @@ fn parse_abi_args(attr: TokenStream2) -> syn::Result<AbiArgs> {
     }
 
     let missing = |what: &str| {
-        Error::new(Span::call_site(), format!("missing `{what} = ...` in #[sysabi::abi(...)]"))
+        Error::new(
+            Span::call_site(),
+            format!("missing `{what} = ...` in #[sysabi::abi(...)]"),
+        )
     };
 
     Ok(AbiArgs {
@@ -164,34 +173,50 @@ fn value_tokens(e: &Expr) -> TokenStream2 {
 
 fn expect_str(e: &Expr) -> syn::Result<LitStr> {
     match e {
-        Expr::Lit(ExprLit { lit: Lit::Str(s), .. }) => Ok(s.clone()),
+        Expr::Lit(ExprLit {
+            lit: Lit::Str(s), ..
+        }) => Ok(s.clone()),
         _ => Err(Error::new(e.span(), "expected string literal")),
     }
 }
 
 fn expect_int(e: &Expr) -> syn::Result<LitInt> {
     match e {
-        Expr::Lit(ExprLit { lit: Lit::Int(i), .. }) => Ok(i.clone()),
+        Expr::Lit(ExprLit {
+            lit: Lit::Int(i), ..
+        }) => Ok(i.clone()),
         _ => Err(Error::new(e.span(), "expected integer literal")),
     }
 }
 
 fn parse_syscall(ti: &TraitItem, abi: &AbiArgs) -> syn::Result<Syscall> {
     let TraitItem::Fn(f) = ti else {
-        return Err(Error::new(ti.span(), "only syscall decls (`fn`) are allowed here"));
+        return Err(Error::new(
+            ti.span(),
+            "only syscall decls (`fn`) are allowed here",
+        ));
     };
 
     let sig = &f.sig;
 
     if let Some(body) = &f.default {
-        return Err(Error::new(body.span(), "syscall declarations cannot have a default implementation"));
+        return Err(Error::new(
+            body.span(),
+            "syscall declarations cannot have a default implementation",
+        ));
     }
 
     if !sig.generics.params.is_empty() || sig.generics.where_clause.is_some() {
-        return Err(Error::new(sig.generics.span(), "syscalls cannot be generic"));
+        return Err(Error::new(
+            sig.generics.span(),
+            "syscalls cannot be generic",
+        ));
     }
 
-    if let Some(t) = sig.constness.as_ref().map(Spanned::span)
+    if let Some(t) = sig
+        .constness
+        .as_ref()
+        .map(Spanned::span)
         .or(sig.asyncness.as_ref().map(Spanned::span))
         .or(sig.abi.as_ref().map(Spanned::span))
         .or(sig.variadic.as_ref().map(Spanned::span))
@@ -213,7 +238,8 @@ fn parse_syscall(ti: &TraitItem, abi: &AbiArgs) -> syn::Result<Syscall> {
         let Meta::List(list) = &attr.meta else {
             return Err(Error::new(attr.span(), "expected #[syscall(nr = ...)]"));
         };
-        let metas = list.parse_args_with(Punctuated::<MetaNameValue, Token![,]>::parse_terminated)?;
+        let metas =
+            list.parse_args_with(Punctuated::<MetaNameValue, Token![,]>::parse_terminated)?;
 
         for mnv in &metas {
             if mnv.path.is_ident("nr") {
@@ -237,7 +263,10 @@ fn parse_syscall(ti: &TraitItem, abi: &AbiArgs) -> syn::Result<Syscall> {
     }
 
     let nr = nr.ok_or_else(|| {
-        Error::new(sig.ident.span(), "missing #[syscall(nr = ...)] on syscall decl")
+        Error::new(
+            sig.ident.span(),
+            "missing #[syscall(nr = ...)] on syscall decl",
+        )
     })?;
 
     let mut args = Vec::new();
@@ -252,7 +281,10 @@ fn parse_syscall(ti: &TraitItem, abi: &AbiArgs) -> syn::Result<Syscall> {
             }
             FnArg::Typed(pt) => {
                 let Pat::Ident(pi) = &*pt.pat else {
-                    return Err(Error::new(pt.pat.span(), "syscall arguments must be plain idents"));
+                    return Err(Error::new(
+                        pt.pat.span(),
+                        "syscall arguments must be plain idents",
+                    ));
                 };
 
                 args.push((pi.ident.clone(), (*pt.ty).clone()));
@@ -263,7 +295,10 @@ fn parse_syscall(ti: &TraitItem, abi: &AbiArgs) -> syn::Result<Syscall> {
     if args.len() > MAX_ARGS {
         return Err(Error::new(
             sig.inputs.span(),
-            format!("syscalls can have up to {MAX_ARGS} args, found {}", args.len()),
+            format!(
+                "syscalls can have up to {MAX_ARGS} args, found {}",
+                args.len()
+            ),
         ));
     }
 
@@ -296,8 +331,14 @@ fn type_string(ty: &Type) -> String {
     // collapse token-stream spacing (`* const u8`) into something human-readable
     let s = quote!(#ty).to_string();
 
-    s.replace(" < ", "<").replace(" <", "<").replace("< ", "<").replace(" >", ">")
-        .replace(" ,", ",").replace("& ", "&").replace("* ", "*").replace(" :: ", "::")
+    s.replace(" < ", "<")
+        .replace(" <", "<")
+        .replace("< ", "<")
+        .replace(" >", ">")
+        .replace(" ,", ",")
+        .replace("& ", "&")
+        .replace("* ", "*")
+        .replace(" :: ", "::")
 }
 
 fn snake_case(s: &str) -> String {
@@ -326,9 +367,10 @@ fn snake_case(s: &str) -> String {
 fn generate(abi: &AbiArgs, item: &ItemTrait, syscalls: &[Syscall]) -> TokenStream2 {
     let vis = &item.vis;
     let trait_name = &item.ident;
-    let module = abi.module.clone().unwrap_or_else(|| {
-        Ident::new(&snake_case(&trait_name.to_string()), trait_name.span())
-    });
+    let module = abi
+        .module
+        .clone()
+        .unwrap_or_else(|| Ident::new(&snake_case(&trait_name.to_string()), trait_name.span()));
     let abi_name = &abi.name;
     let version = abi.version;
 
@@ -406,7 +448,11 @@ fn generate(abi: &AbiArgs, item: &ItemTrait, syscalls: &[Syscall]) -> TokenStrea
 }
 
 fn nr_const(sc: &Syscall) -> Ident {
-    format_ident!("{}", sc.name.to_string().to_uppercase(), span = sc.name.span())
+    format_ident!(
+        "{}",
+        sc.name.to_string().to_uppercase(),
+        span = sc.name.span()
+    )
 }
 
 fn kernel_trait(abi: &AbiArgs, item: &ItemTrait, syscalls: &[Syscall]) -> TokenStream2 {
@@ -468,7 +514,7 @@ fn kernel_mod(abi: &AbiArgs, item: &ItemTrait, syscalls: &[Syscall]) -> TokenStr
                     };
                 }
             });
-        
+
         quote! {
             super::nr::#konst => {
                 #(#decode)*
@@ -538,7 +584,10 @@ fn user_mod(abi: &AbiArgs, syscalls: &[Syscall]) -> TokenStream2 {
         let konst = nr_const(sc);
         let unsafety = sc.is_unsafe.then(|| quote!(unsafe));
         let params = sc.args.iter().map(|(n, t)| quote!(#n: #t));
-        let raw_args = sc.args.iter().map(|(n, t)| quote!(<#t as ::sysabi::SyscallArg>::into_raw(#n)));
+        let raw_args = sc
+            .args
+            .iter()
+            .map(|(n, t)| quote!(<#t as ::sysabi::SyscallArg>::into_raw(#n)));
         let trap = format_ident!("syscall{}", sc.args.len());
 
         quote! {

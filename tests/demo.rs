@@ -82,7 +82,8 @@ impl Demo for Kernel {
             return Err(Errno::EBADF);
         }
 
-        cx.out.extend_from_slice(unsafe { std::slice::from_raw_parts(buf, len) });
+        cx.out
+            .extend_from_slice(unsafe { std::slice::from_raw_parts(buf, len) });
 
         Ok(len)
     }
@@ -123,14 +124,24 @@ impl Hooks<Proc, Errno> for Tracer {
 }
 
 fn proc() -> Proc {
-    Proc { pid: 7, out: Vec::new(), flag: false }
+    Proc {
+        pid: 7,
+        out: Vec::new(),
+        flag: false,
+    }
 }
 
 #[test]
 fn dispatch_calls_handler() {
     let mut p = proc();
     let msg = b"hi";
-    let ret = demo::kernel::dispatch(&Kernel, &(), &mut p, 1, [1, msg.as_ptr() as usize, 2, 0, 0, 0]);
+    let ret = demo::kernel::dispatch(
+        &Kernel,
+        &(),
+        &mut p,
+        1,
+        [1, msg.as_ptr() as usize, 2, 0, 0, 0],
+    );
 
     assert_eq!(ret, 2);
     assert_eq!(p.out, b"hi");
@@ -142,10 +153,40 @@ fn dispatch_errors() {
     let mut p = proc();
     let err = |raw| sysabi::decode::<Errno>(raw).unwrap_err();
 
-    assert_eq!(err(demo::kernel::dispatch(&Kernel, &(), &mut p, 1, [2, 0, 0, 0, 0, 0])), Errno::EBADF);
-    assert_eq!(err(demo::kernel::dispatch(&Kernel, &(), &mut p, 1234, [0; 6])), Errno::ENOSYS);
-    assert_eq!(err(demo::kernel::dispatch(&Kernel, &(), &mut p, 500, [2, 0, 0, 0, 0, 0])), Errno::EINVAL);
-    assert_eq!(err(demo::kernel::dispatch(&Kernel, &(), &mut p, 1, [1 << 40, 0, 0, 0, 0, 0])), Errno::EINVAL);
+    assert_eq!(
+        err(demo::kernel::dispatch(
+            &Kernel,
+            &(),
+            &mut p,
+            1,
+            [2, 0, 0, 0, 0, 0]
+        )),
+        Errno::EBADF
+    );
+    assert_eq!(
+        err(demo::kernel::dispatch(&Kernel, &(), &mut p, 1234, [0; 6])),
+        Errno::ENOSYS
+    );
+    assert_eq!(
+        err(demo::kernel::dispatch(
+            &Kernel,
+            &(),
+            &mut p,
+            500,
+            [2, 0, 0, 0, 0, 0]
+        )),
+        Errno::EINVAL
+    );
+    assert_eq!(
+        err(demo::kernel::dispatch(
+            &Kernel,
+            &(),
+            &mut p,
+            1,
+            [1 << 40, 0, 0, 0, 0, 0]
+        )),
+        Errno::EINVAL
+    );
     assert!(!p.flag);
 }
 
@@ -179,7 +220,10 @@ fn dyn_handler_and_hooks() {
     let handler: &dyn Demo<Context = Proc> = &Kernel;
     let hooks: &dyn Hooks<Proc, Errno> = &NoExit;
 
-    assert_eq!(demo::kernel::dispatch(handler, hooks, &mut p, 39, [0; 6]), 7);
+    assert_eq!(
+        demo::kernel::dispatch(handler, hooks, &mut p, 39, [0; 6]),
+        7
+    );
 }
 
 #[cfg(all(target_os = "linux", target_arch = "x86_64"))]
@@ -187,8 +231,14 @@ fn dyn_handler_and_hooks() {
 fn user_stubs_against_linux() {
     let msg = b"sysabi: hello from the user half\n";
 
-    assert_eq!(unsafe { demo::user::write(1, msg.as_ptr(), msg.len()) }, Ok(msg.len()));
-    assert_eq!(unsafe { demo::user::write(9999, msg.as_ptr(), msg.len()) }, Err(Errno::EBADF));
+    assert_eq!(
+        unsafe { demo::user::write(1, msg.as_ptr(), msg.len()) },
+        Ok(msg.len())
+    );
+    assert_eq!(
+        unsafe { demo::user::write(9999, msg.as_ptr(), msg.len()) },
+        Err(Errno::EBADF)
+    );
     assert_eq!(demo::user::getpid(), Ok(std::process::id()));
     assert_eq!(demo::user::set_flag(true), Err(Errno::ENOSYS));
 }
